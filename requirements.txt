@@ -1,9 +1,10 @@
 streamlit
-pandas
-openpyxl
-xlsxwriter
-fpdf
-plotly
-streamlit-aggrid
-gspread
+gspread==5.11.3
+google-auth==2.21.0
 oauth2client
+pandas
+plotly
+fpdf
+xlsxwriter
+openpyxl
+st-aggrid
