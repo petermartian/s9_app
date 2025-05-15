@@ -1,0 +1,9 @@
+streamlit
+pandas
+openpyxl
+xlsxwriter
+fpdf
+plotly
+st-aggrid
+gspread
+oauth2client
