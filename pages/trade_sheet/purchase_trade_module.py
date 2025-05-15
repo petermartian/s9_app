@@ -86,19 +86,29 @@ def render_purchase_trade():
         reload_data=False
     )
 
-    st.markdown("### 📊 Summary")
-    required_cols = ["Buy/Sell", "Trade Size", "NGN Amount"]
-    if all(col in df_trade.columns for col in required_cols):
-        summary = df_trade.groupby("Buy/Sell")[["Trade Size", "NGN Amount"]].sum().round(2)
-        st.dataframe(summary)
-    else:
-        st.warning("⚠️ Summary table not shown. Required columns are missing.")
+    st.markdown("### 📊 Summary and Chart Filters")
+    if "Date" in df_trade.columns:
+        df_trade["Date"] = pd.to_datetime(df_trade["Date"], errors="coerce")
+        df_trade = df_trade[df_trade["Date"].notna()]
 
-    if "Date" in df_trade.columns and "Trade Size" in df_trade.columns:
-        st.markdown("### 📈 Weekly Trade Size")
-        df_trade["Week"] = pd.to_datetime(df_trade["Date"], errors="coerce").dt.to_period("W").astype(str)
-        weekly_chart = df_trade.groupby("Week")["Trade Size"].sum().reset_index()
-        fig = px.bar(weekly_chart, x="Week", y="Trade Size", title="Weekly Trade Size")
-        st.plotly_chart(fig, use_container_width=True)
+        start = st.date_input("📅 Start Date", df_trade["Date"].min().date())
+        end = st.date_input("📅 End Date", df_trade["Date"].max().date())
+        df_filtered = df_trade[(df_trade["Date"] >= pd.to_datetime(start)) & (df_trade["Date"] <= pd.to_datetime(end))]
+
+        required_cols = ["Buy/Sell", "Trade Size", "NGN Amount"]
+        if all(col in df_filtered.columns for col in required_cols):
+            summary = df_filtered.groupby("Buy/Sell")[["Trade Size", "NGN Amount"]].sum().round(2)
+            st.dataframe(summary)
+        else:
+            st.warning("⚠️ Summary table not shown. Required columns are missing.")
+
+        if "Trade Size" in df_filtered.columns:
+            st.markdown("### 📈 Weekly Trade Size")
+            df_filtered["Week"] = df_filtered["Date"].dt.to_period("W").astype(str)
+            weekly_chart = df_filtered.groupby("Week")["Trade Size"].sum().reset_index()
+            fig = px.bar(weekly_chart, x="Week", y="Trade Size", title="Weekly Trade Size")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("📆 No valid 'Trade Size' data available for chart.")
     else:
-        st.info("📆 No valid 'Date' or 'Trade Size' data available for chart.")
+        st.warning("⚠️ 'Date' column missing. Cannot apply filters or show charts.")
