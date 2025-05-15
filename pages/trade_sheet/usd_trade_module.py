@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import time
@@ -45,7 +44,7 @@ def render_usd_trade():
     with st.form("usd_trade_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
-            trade_date = st.date_input("Date", value=date.today())
+            trade_date = st.date_input("Date", value=date.today(), key="usd_form_date")
             side = st.selectbox("Buy/Sell", ["Buy", "Sell"])
             customer = st.selectbox("Trade Customer", client_list)
             currency = st.text_input("Trade Currency", value="USD")
@@ -105,8 +104,8 @@ def render_usd_trade():
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
-        start = st.date_input("📅 Start Date", df["Date"].min().date())
-        end = st.date_input("📅 End Date", df["Date"].max().date())
+        start = st.date_input("📅 Start Date", df["Date"].min().date(), key="usd_start_date")
+        end = st.date_input("📅 End Date", df["Date"].max().date(), key="usd_end_date")
         df_filtered = df[(df["Date"] >= pd.to_datetime(start)) & (df["Date"] <= pd.to_datetime(end))]
 
         for col in ["Trade Size", "Amount", "Income"]:
