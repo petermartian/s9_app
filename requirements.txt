@@ -8,3 +8,4 @@ oauth2client
 streamlit-aggrid
 gspread==5.11.3
 google-auth==2.21.0
+kaleido==0.2.1
