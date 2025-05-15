@@ -14,7 +14,6 @@ def render_purchase_trade():
     DATABASE_SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     SELLER_TAB = "Seller List"
 
-    # --- Load Seller List from Google Sheets ---
     @st.cache_data(ttl=60)
     def load_seller_list():
         client = get_gspread_client()
@@ -23,7 +22,6 @@ def render_purchase_trade():
         df = pd.DataFrame(seller_ws.get_all_records())
         return df.iloc[:, 0].dropna().tolist()
 
-    # --- Load Purchase Trade Data ---
     @st.cache_data(ttl=60)
     def load_trade_data():
         client = get_gspread_client()
@@ -32,14 +30,12 @@ def render_purchase_trade():
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
 
-    # --- UI ---
     st.subheader("💱 Purchase Trade")
 
-    # Load data
     seller_data = load_seller_list()
     df_trade, worksheet = load_trade_data()
 
-    # --- Add New Trade Entry ---
+    # --- Form ---
     with st.form("purchase_trade_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
@@ -68,23 +64,20 @@ def render_purchase_trade():
                 "Naira Paid": naira_paid,
                 "Naira Balance": naira_balance
             }
-            df_trade = pd.concat([df_trade, pd.DataFrame([new_row])], ignore_index=True)
-            worksheet.update([df_trade.columns.values.tolist()] + df_trade.values.tolist())
+            worksheet.append_rows([list(new_row.values())])
             st.success("Trade added successfully.")
             st.rerun()
 
-    # --- Refresh Button ---
     if st.button("🔄 Refresh Data"):
         st.cache_data.clear()
         st.rerun()
 
-    # --- AgGrid Table ---
     st.markdown("### 📋 Trade Table")
     gb = GridOptionsBuilder.from_dataframe(df_trade)
     gb.configure_pagination()
     gb.configure_default_column(editable=False)
 
-    grid_response = AgGrid(
+    AgGrid(
         df_trade,
         gridOptions=gb.build(),
         update_mode=GridUpdateMode.NO_UPDATE,
@@ -93,7 +86,6 @@ def render_purchase_trade():
         reload_data=False
     )
 
-    # --- Summary ---
     st.markdown("### 📊 Summary")
     required_cols = ["Buy/Sell", "Trade Size", "NGN Amount"]
     if all(col in df_trade.columns for col in required_cols):
@@ -102,7 +94,6 @@ def render_purchase_trade():
     else:
         st.warning("⚠️ Summary table not shown. Required columns are missing.")
 
-    # --- Weekly Chart ---
     if "Date" in df_trade.columns and "Trade Size" in df_trade.columns:
         st.markdown("### 📈 Weekly Trade Size")
         df_trade["Week"] = pd.to_datetime(df_trade["Date"], errors="coerce").dt.to_period("W").astype(str)
