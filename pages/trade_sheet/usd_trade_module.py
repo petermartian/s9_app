@@ -4,7 +4,6 @@ import pandas as pd
 import time
 from datetime import date
 import plotly.express as px
-from fpdf import FPDF
 import io
 import xlsxwriter
 from utils.auth import get_gspread_client
@@ -34,6 +33,7 @@ def render_usd_trade():
     # --- Load Data ---
     client_list = load_clients()
     df, worksheet = load_usd_trades()
+    df.columns = df.columns.str.strip().str.title()
 
     st.subheader("💵 USD Trade Entry")
     with st.form("usd_trade_form", clear_on_submit=False):
@@ -47,12 +47,12 @@ def render_usd_trade():
             sell_rate = st.number_input("Sell Rate", min_value=0.0)
             buy_rate = st.number_input("Buy Rate", min_value=0.0)
         with col2:
-            amount = trade_size * sell_rate
+            amount = trade_size * sell_rate if trade_size and sell_rate else 0.0
             st.markdown(f"**Amount (auto):** ₦{amount:,.2f}")
             usd_received = st.number_input("USD Received", min_value=0.0)
             usd_paid_out = st.number_input("USD Paid Out", min_value=0.0)
             commission = st.number_input("Commission", min_value=0.0)
-            ngn_income = (sell_rate - buy_rate) * trade_size
+            ngn_income = (sell_rate - buy_rate) * trade_size if trade_size and buy_rate else 0.0
             st.markdown(f"**NGN Income (auto):** ₦{ngn_income:,.2f}")
         submitted = st.form_submit_button("✅ Submit USD Trade")
 
@@ -71,12 +71,12 @@ def render_usd_trade():
             "NGN Income": round(ngn_income, 2),
             "Buy Rate": round(buy_rate, 2)
         }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+        safe_row = [[str(v) if pd.isna(v) else v for v in new_row.values()]]
+        worksheet.append_rows(safe_row)
         st.success("✅ Trade submitted successfully!")
         st.rerun()
 
-    if not df.empty:
+    if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
         start = st.date_input("📅 Start Date", df["Date"].min().date())
