@@ -1,19 +1,19 @@
+
+import streamlit as st
+import pandas as pd
+import time
+from datetime import date
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+import plotly.express as px
+from utils.auth import get_gspread_client
+
 def render_purchase_trade():
-    
-    import streamlit as st
-    import pandas as pd
-    import time
-    from datetime import date, datetime
-    from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-    import plotly.express as px
-    from utils.auth import get_gspread_client
-    
     # --- CONFIG ---
     TRADE_SHEET_KEY = "1eQS-LZLfsGmhySVHS6ETaKNmBP6bRngtDUiy-Nq0YXw"
     TRADE_TAB = "Purchase Trade"
     DATABASE_SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     SELLER_TAB = "Seller List"
-    
+
     # --- Load Seller List from Google Sheets ---
     @st.cache_data(ttl=60)
     def load_seller_list():
@@ -22,7 +22,7 @@ def render_purchase_trade():
         seller_ws = db_sheet.worksheet(SELLER_TAB)
         df = pd.DataFrame(seller_ws.get_all_records())
         return df.iloc[:, 0].dropna().tolist()
-    
+
     # --- Load Purchase Trade Data ---
     @st.cache_data(ttl=60)
     def load_trade_data():
@@ -31,14 +31,14 @@ def render_purchase_trade():
         ws = trade_sheet.worksheet(TRADE_TAB)
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
-    
+
     # --- UI ---
     st.subheader("💱 Purchase Trade")
-    
+
     # Load data
     seller_data = load_seller_list()
     df_trade, worksheet = load_trade_data()
-    
+
     # --- Add New Trade Entry ---
     with st.form("purchase_trade_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
@@ -51,10 +51,10 @@ def render_purchase_trade():
             trade_customer = st.selectbox("Trade Customer", seller_data)
             ngn_amount = st.number_input("NGN Amount", format="%.2f")
             naira_paid = st.number_input("Naira Paid", format="%.2f")
-    
+
         trade_size = ngn_amount / rate if rate else 0
         naira_balance = ngn_amount - naira_paid
-    
+
         submitted = st.form_submit_button("Add Trade")
         if submitted and trade_customer:
             new_row = {
@@ -72,18 +72,18 @@ def render_purchase_trade():
             worksheet.update([df_trade.columns.values.tolist()] + df_trade.values.tolist())
             st.success("Trade added successfully.")
             st.rerun()
-    
+
     # --- Refresh Button ---
     if st.button("🔄 Refresh Data"):
         st.cache_data.clear()
         st.rerun()
-    
+
     # --- AgGrid Table ---
     st.markdown("### 📋 Trade Table")
     gb = GridOptionsBuilder.from_dataframe(df_trade)
     gb.configure_pagination()
     gb.configure_default_column(editable=False)
-    
+
     grid_response = AgGrid(
         df_trade,
         gridOptions=gb.build(),
@@ -92,15 +92,22 @@ def render_purchase_trade():
         height=400,
         reload_data=False
     )
-    
+
     # --- Summary ---
     st.markdown("### 📊 Summary")
-    summary = df_trade.groupby("Buy/Sell")[["Trade Size", "NGN Amount"]].sum().round(2)
-    st.dataframe(summary)
-    
+    required_cols = ["Buy/Sell", "Trade Size", "NGN Amount"]
+    if all(col in df_trade.columns for col in required_cols):
+        summary = df_trade.groupby("Buy/Sell")[["Trade Size", "NGN Amount"]].sum().round(2)
+        st.dataframe(summary)
+    else:
+        st.warning("⚠️ Summary table not shown. Required columns are missing.")
+
     # --- Weekly Chart ---
-    st.markdown("### 📈 Weekly Trade Size")
-    df_trade["Week"] = pd.to_datetime(df_trade["Date"]).dt.to_period("W").astype(str)
-    weekly_chart = df_trade.groupby("Week")["Trade Size"].sum().reset_index()
-    fig = px.bar(weekly_chart, x="Week", y="Trade Size", title="Weekly Trade Size")
-    st.plotly_chart(fig, use_container_width=True)
+    if "Date" in df_trade.columns and "Trade Size" in df_trade.columns:
+        st.markdown("### 📈 Weekly Trade Size")
+        df_trade["Week"] = pd.to_datetime(df_trade["Date"], errors="coerce").dt.to_period("W").astype(str)
+        weekly_chart = df_trade.groupby("Week")["Trade Size"].sum().reset_index()
+        fig = px.bar(weekly_chart, x="Week", y="Trade Size", title="Weekly Trade Size")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("📆 No valid 'Date' or 'Trade Size' data available for chart.")
