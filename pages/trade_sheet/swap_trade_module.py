@@ -1,22 +1,19 @@
 
 import streamlit as st
 import pandas as pd
-import time
 from datetime import date
 import plotly.express as px
-from fpdf import FPDF
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 import io
 import xlsxwriter
 from utils.auth import get_gspread_client
 
 def render_swap_trade():
-    # --- Google Sheet Config ---
     TRADE_SHEET_KEY = "1eQS-LZLfsGmhySVHS6ETaKNmBP6bRngtDUiy-Nq0YXw"
     TRADE_TAB = "Swap Trade"
     DATABASE_SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     CLIENT_TAB = "Client List"
 
-    # --- Load Clients from Google Sheets ---
     @st.cache_data(ttl=60)
     def load_clients():
         client = get_gspread_client()
@@ -32,16 +29,16 @@ def render_swap_trade():
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
 
-    # --- Load data ---
     client_list = load_clients()
     df, worksheet = load_swap_trades()
+    df.columns = df.columns.str.strip().str.title()
 
-    # --- Form UI ---
     st.subheader("🔄 Swap Trade Entry")
+
     with st.form("swap_trade_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
-            trade_date = st.date_input("Date", value=date.today())
+            trade_date = st.date_input("Date", value=date.today(), key="swap_date")
             client_name = st.selectbox("Client", client_list)
             usd_received = st.number_input("USD Received", min_value=0.0)
             charges_pct = st.number_input("Charges (%)", min_value=0.0, step=0.1)
@@ -53,8 +50,8 @@ def render_swap_trade():
             usdt_paid = st.number_input("USDT Paid", min_value=0.0)
             usd_status = st.selectbox("USD Status", ["Pending", "Completed"])
             usdt_status = st.selectbox("USDT Status", ["Pending", "Completed"])
-            date_received = st.date_input("Date Received", value=date.today())
-            date_sent = st.date_input("Date Sent", value=date.today())
+            date_received = st.date_input("Date Received", value=date.today(), key="swap_date_received")
+            date_sent = st.date_input("Date Sent", value=date.today(), key="swap_date_sent")
             net_profit = usd_received - usdt_due
             st.markdown(f"**Net Profit (auto):** {net_profit:,.2f}")
         submitted = st.form_submit_button("✅ Submit Swap Trade")
@@ -65,31 +62,54 @@ def render_swap_trade():
             "Client": client_name,
             "USD Received": round(usd_received, 2),
             "Charges %": round(charges_pct, 2),
-            "Charges (USDT)": round(charges_usdt, 2),
-            "USDT Due": round(usdt_due, 2),
-            "USDT Paid": round(usdt_paid, 2),
-            "USD Status": usd_status,
-            "USDT Status": usdt_status,
+            "Charges (Usdt)": round(charges_usdt, 2),
+            "Usdt Due": round(usdt_due, 2),
+            "Usdt Paid": round(usdt_paid, 2),
+            "Usd Status": usd_status,
+            "Usdt Status": usdt_status,
             "Date Received": date_received.strftime("%Y-%m-%d"),
             "Date Sent": date_sent.strftime("%Y-%m-%d"),
             "Net Profit": round(net_profit, 2)
         }
-        df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+        safe_row = [[str(v) if pd.isna(v) else v for v in new_row.values()]]
+        worksheet.append_rows(safe_row)
         st.success("✅ Swap trade submitted successfully!")
         st.rerun()
 
-    # --- Filter and summary ---
+    st.markdown("### 📋 Swap Trades Table")
+    col_refresh, _ = st.columns([1, 9])
+    with col_refresh:
+        if st.button("🔄 Refresh Data", key="swap_refresh_btn"):
+            st.cache_data.clear()
+            st.rerun()
+
     if not df.empty:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
-        start = st.date_input("📅 Start Date", df["Date"].min().date())
-        end = st.date_input("📅 End Date", df["Date"].max().date())
+        start = st.date_input("📅 Start Date", df["Date"].min().date(), key="swap_start")
+        end = st.date_input("📅 End Date", df["Date"].max().date(), key="swap_end")
         df_filtered = df[(df["Date"] >= pd.to_datetime(start)) & (df["Date"] <= pd.to_datetime(end))]
 
-        for col in ["Net Profit", "USDT Due"]:
+        for col in ["Net Profit", "Usdt Due"]:
             df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce")
 
+        gb = GridOptionsBuilder.from_dataframe(df_filtered)
+        gb.configure_pagination()
+        gb.configure_default_column(editable=True, filter=True, resizable=True)
+        grid_response = AgGrid(
+            df_filtered,
+            gridOptions=gb.build(),
+            update_mode=GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=True,
+            height=350
+        )
+
+        updated_df = grid_response["data"]
+        if not updated_df.equals(df_filtered):
+            worksheet.update([updated_df.columns.values.tolist()] + updated_df.values.tolist())
+            st.success("✅ Table updates saved!")
+
+        st.markdown("### 📊 Summary")
         df_filtered["Week"] = df_filtered["Date"].dt.isocalendar().week
         df_filtered["Month"] = df_filtered["Date"].dt.month
 
@@ -101,9 +121,9 @@ def render_swap_trade():
                 df_filtered[df_filtered["Month"] == date.today().month]["Net Profit"].sum()
             ],
             "USDT Due": [
-                df_filtered[df_filtered["Date"] == pd.to_datetime(date.today())]["USDT Due"].sum(),
-                df_filtered[df_filtered["Week"] == date.today().isocalendar().week]["USDT Due"].sum(),
-                df_filtered[df_filtered["Month"] == date.today().month]["USDT Due"].sum()
+                df_filtered[df_filtered["Date"] == pd.to_datetime(date.today())]["Usdt Due"].sum(),
+                df_filtered[df_filtered["Week"] == date.today().isocalendar().week]["Usdt Due"].sum(),
+                df_filtered[df_filtered["Month"] == date.today().month]["Usdt Due"].sum()
             ]
         }
         df_summary = pd.DataFrame(summary)
