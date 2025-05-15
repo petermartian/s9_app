@@ -2,7 +2,8 @@ import streamlit as st
 import pandas as pd
 import time
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from auth import get_gspread_client
+from utils.auth import get_gspread_client
+
 
 # --- CONFIG ---
 SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
