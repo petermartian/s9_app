@@ -1,4 +1,4 @@
-def render_ghs_trade_trade():
+def render_ghs_trade():
     import streamlit as st
     import pandas as pd
     from datetime import date
