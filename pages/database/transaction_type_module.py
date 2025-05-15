@@ -6,7 +6,7 @@ from utils.auth import get_gspread_client
 
 # --- CONFIG ---
 SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
-TAB_NAME = "Transaction Type"
+TAB_NAME = "Transaction type"
 
 def render_transaction_type():
     st.markdown("<div style='background-color:#EAEDED;padding:10px;border-radius:5px'><h4>➕ Add Transaction Type</h4></div>", unsafe_allow_html=True)
