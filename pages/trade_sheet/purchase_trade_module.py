@@ -30,7 +30,7 @@ def render_purchase_trade():
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
 
-    st.subheader("💱 Purchase Trade")
+    st.subheader("💱 Purchase Trade Entry")
 
     seller_data = load_seller_list()
     df_trade, worksheet = load_trade_data()
