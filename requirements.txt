@@ -1,11 +1,10 @@
 streamlit
-gspread==5.11.3
-google-auth==2.21.0
-oauth2client
 pandas
 plotly
 fpdf
 xlsxwriter
 openpyxl
+oauth2client
 streamlit-aggrid
-
+gspread==5.11.3
+google-auth==2.21.0
