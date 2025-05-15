@@ -7,4 +7,5 @@ plotly
 fpdf
 xlsxwriter
 openpyxl
-st-aggrid
+streamlit-aggrid
+
