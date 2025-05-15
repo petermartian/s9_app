@@ -4,7 +4,6 @@ import time
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from utils.auth import get_gspread_client
 
-
 # --- CONFIG ---
 SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
 TAB_NAME = "Client List"
@@ -36,14 +35,14 @@ def render_client_list():
                 df = pd.concat([df, new_row], ignore_index=True)
                 worksheet.update([df.columns.values.tolist()] + df.values.tolist())
                 st.success("Client added.")
-                st.experimental_rerun()
+                st.rerun()
 
     # --- Table Title and Refresh ---
     st.markdown("### 📋 Client Table")
 
     if st.button("🔄 Refresh Client List"):
         st.cache_data.clear()
-        st.experimental_rerun()
+        st.rerun()
 
     # --- AgGrid Table Display ---
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -66,4 +65,6 @@ def render_client_list():
         st.success("Changes detected. Saving...")
         time.sleep(0.5)
         worksheet.update([updated_df.columns.values.tolist()] + updated_df.values.tolist())
-        st.experimental_rerun()
+        st.rerun()
+
+
