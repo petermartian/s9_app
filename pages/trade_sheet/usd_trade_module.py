@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import time
@@ -29,6 +30,11 @@ def render_usd_trade():
         ws = sheet.worksheet(TRADE_TAB)
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
+
+    # --- Refresh Control ---
+    if st.button("🔄 Refresh Table Data"):
+        st.cache_data.clear()
+        st.rerun()
 
     # --- Load Data ---
     client_list = load_clients()
