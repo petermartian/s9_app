@@ -1,34 +1,50 @@
-
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 import streamlit as st
 import pandas as pd
-import os
 import time
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from utils.auth import get_gspread_client
+
+# --- CONFIG ---
+SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
+TAB_NAME = "Seller List"
 
 def render_seller_list():
-    EXCEL_PATH = "database.xlsx"
-    TAB_NAME = "Seller List"
-    st.markdown("<div style='background-color:#FDEBD0;padding:10px;border-radius:5px'><h4>➕ Add Seller List</h4></div>", unsafe_allow_html=True)
+    st.markdown("<div style='background-color:#FDEBD0;padding:10px;border-radius:5px'><h4>➕ Add Seller</h4></div>", unsafe_allow_html=True)
 
-    if os.path.exists(EXCEL_PATH):
-        df = pd.read_excel(EXCEL_PATH, sheet_name=TAB_NAME)
-    else:
-        df = pd.DataFrame(columns=["Seller Name", "Contact Person", "Phone Number"])
+    client = get_gspread_client()
+    sheet = client.open_by_key(SHEET_KEY)
+    worksheet = sheet.worksheet(TAB_NAME)
 
+    # --- Load data from Google Sheet ---
+    @st.cache_data(ttl=60)
+    def load_data():
+        records = worksheet.get_all_records()
+        return pd.DataFrame(records)
+
+    df = load_data()
+
+    # --- Add Seller Form ---
     with st.form("add_form_seller_list", clear_on_submit=False):
         inputs = [st.text_input(label) for label in ["Seller Name", "Contact Person", "Phone Number"]]
         submitted = st.form_submit_button("Add")
         if submitted and inputs[0].strip():
             if inputs[0].strip().lower() in df["Seller Name"].str.lower().str.strip().values:
-                st.error(f"Seller List '{inputs[0]}' already exists.")
+                st.error(f"Seller '{inputs[0]}' already exists.")
             else:
-                df = pd.concat([df, pd.DataFrame([inputs], columns=["Seller Name", "Contact Person", "Phone Number"])], ignore_index=True)
-                with pd.ExcelWriter(EXCEL_PATH, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                    df.to_excel(writer, sheet_name=TAB_NAME, index=False)
-                st.success("Seller List added.")
+                new_row = pd.DataFrame([inputs], columns=["Seller Name", "Contact Person", "Phone Number"])
+                df = pd.concat([df, new_row], ignore_index=True)
+                worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+                st.success("Seller added.")
+                st.rerun()
 
-    st.markdown("### 📋 Table")
+    # --- Table Title and Refresh ---
+    st.markdown("### 📋 Seller Table")
 
+    if st.button("🔄 Refresh Seller List"):
+        st.cache_data.clear()
+        st.rerun()
+
+    # --- AgGrid Table Display ---
     gb = GridOptionsBuilder.from_dataframe(df)
     gb.configure_pagination()
     gb.configure_default_column(editable=True)
@@ -43,9 +59,11 @@ def render_seller_list():
     )
 
     updated_df = grid_response["data"]
+
+    # --- Save edits from AgGrid ---
     if not updated_df.equals(df):
         st.success("Changes detected. Saving...")
         time.sleep(0.5)
-        with pd.ExcelWriter(EXCEL_PATH, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-            updated_df.to_excel(writer, sheet_name=TAB_NAME, index=False)
-        st.experimental_rerun()
+        worksheet.update([updated_df.columns.values.tolist()] + updated_df.values.tolist())
+        st.rerun()
+
