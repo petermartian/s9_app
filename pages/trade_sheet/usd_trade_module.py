@@ -53,7 +53,7 @@ def render_usd_trade():
             usd_paid_out = st.number_input("USD Paid Out", min_value=0.0)
             commission = st.number_input("Commission", min_value=0.0)
             ngn_income = (sell_rate - buy_rate) * trade_size if trade_size and buy_rate else 0.0
-            st.markdown(f"**NGN Income (auto):** ₦{ngn_income:,.2f}")
+            st.markdown(f"**Income (auto):** ₦{ngn_income:,.2f}")
         submitted = st.form_submit_button("✅ Submit USD Trade")
 
     if submitted:
@@ -68,7 +68,7 @@ def render_usd_trade():
             "USD Received": round(usd_received, 2),
             "USD Paid Out": round(usd_paid_out, 2),
             "Commission": round(commission, 2),
-            "NGN Income": round(ngn_income, 2),
+            "Income": round(ngn_income, 2),
             "Buy Rate": round(buy_rate, 2)
         }
         safe_row = [[str(v) if pd.isna(v) else v for v in new_row.values()]]
@@ -83,7 +83,7 @@ def render_usd_trade():
         end = st.date_input("📅 End Date", df["Date"].max().date())
         df_filtered = df[(df["Date"] >= pd.to_datetime(start)) & (df["Date"] <= pd.to_datetime(end))]
 
-        for col in ["Trade Size", "Amount", "NGN Income"]:
+        for col in ["Trade Size", "Amount", "Income"]:
             df_filtered[col] = pd.to_numeric(df_filtered[col], errors="coerce")
 
         df_filtered["Week"] = df_filtered["Date"].dt.isocalendar().week
@@ -101,10 +101,10 @@ def render_usd_trade():
                 df_filtered[df_filtered["Week"] == date.today().isocalendar().week]["Amount"].sum(),
                 df_filtered[df_filtered["Month"] == date.today().month]["Amount"].sum()
             ],
-            "NGN Income": [
-                df_filtered[df_filtered["Date"] == pd.to_datetime(date.today())]["NGN Income"].sum(),
-                df_filtered[df_filtered["Week"] == date.today().isocalendar().week]["NGN Income"].sum(),
-                df_filtered[df_filtered["Month"] == date.today().month]["NGN Income"].sum()
+            "Income": [
+                df_filtered[df_filtered["Date"] == pd.to_datetime(date.today())]["Income"].sum(),
+                df_filtered[df_filtered["Week"] == date.today().isocalendar().week]["Income"].sum(),
+                df_filtered[df_filtered["Month"] == date.today().month]["Income"].sum()
             ]
         }
         df_summary = pd.DataFrame(summary)
