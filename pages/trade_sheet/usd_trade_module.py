@@ -1,4 +1,4 @@
-def render_usd_trade_trade():
+def render_usd_trade():
     import streamlit as st
     import pandas as pd
     from datetime import date
