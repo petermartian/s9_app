@@ -35,7 +35,9 @@ This internal dashboard helps our **Treasury**, **Accounts**, and **Management**
 - 📊 Visualize performance via summaries and charts
 - 🧾 Upload and reconcile bank statements
 - 📄 Download reports in Excel and PDF
-- 💼 Gain a complete financial overview
+- 💰 Access financial summaries and budgeting tools (Finance)
+- 👥 Generate payslips and manage employee records (HR)
+- 💼 Gain a complete financial and operational overview
 
 > Start by selecting a section from the **left-hand menu**.
 """)
