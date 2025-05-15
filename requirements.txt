@@ -4,5 +4,6 @@ openpyxl
 xlsxwriter
 fpdf
 plotly
+streamlit-aggrid
 gspread
 oauth2client
