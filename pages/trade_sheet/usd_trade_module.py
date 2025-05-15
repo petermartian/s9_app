@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import time
@@ -29,11 +30,6 @@ def render_usd_trade():
         ws = sheet.worksheet(TRADE_TAB)
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
-
-    # --- Refresh Control ---
-    if st.button("🔄 Refresh Table Data"):
-        st.cache_data.clear()
-        st.rerun()
 
     # --- Load Data ---
     client_list = load_clients()
@@ -81,8 +77,15 @@ def render_usd_trade():
         st.success("✅ Trade submitted successfully!")
         st.rerun()
 
-    # --- Editable Table with Pagination ---
+    # --- Refresh Button Positioned Near Table ---
     st.markdown("### 📋 Trade Table")
+    col_refresh, _ = st.columns([1, 9])
+    with col_refresh:
+        if st.button("🔄 Refresh Data", key="usd_refresh_btn"):
+            st.cache_data.clear()
+            st.rerun()
+
+    # --- Editable Table with Pagination ---
     if not df.empty:
         gb = GridOptionsBuilder.from_dataframe(df)
         gb.configure_pagination()
