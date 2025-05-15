@@ -1,32 +1,41 @@
 
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 import streamlit as st
 import pandas as pd
-import os
 import time
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from auth import get_gspread_client
+
+# --- CONFIG ---
+SHEET_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
+TAB_NAME = "Client List"
 
 def render_client_list():
-    EXCEL_PATH = "database.xlsx"
-    TAB_NAME = "Client List"
     st.markdown("<div style='background-color:#D6EAF8;padding:10px;border-radius:5px'><h4>➕ Add Client List</h4></div>", unsafe_allow_html=True)
 
-    if os.path.exists(EXCEL_PATH):
-        df = pd.read_excel(EXCEL_PATH, sheet_name=TAB_NAME)
-    else:
-        df = pd.DataFrame(columns=["Client Name", "Email", "Phone Number"])
+    client = get_gspread_client()
+    sheet = client.open_by_key(SHEET_KEY)
+    worksheet = sheet.worksheet(TAB_NAME)
 
+    # --- Load Data from Google Sheet ---
+    data = worksheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    # --- Add Form ---
     with st.form("add_form_client_list", clear_on_submit=False):
         inputs = [st.text_input(label) for label in ["Client Name", "Email", "Phone Number"]]
         submitted = st.form_submit_button("Add")
         if submitted and inputs[0].strip():
-            if inputs[0].strip().lower() in df["Client Name"].str.lower().str.strip().values:
-                st.error(f"Client List '{inputs[0]}' already exists.")
+            existing_clients = df["Client Name"].str.lower().str.strip().values
+            if inputs[0].strip().lower() in existing_clients:
+                st.error(f"Client '{inputs[0]}' already exists.")
             else:
-                df = pd.concat([df, pd.DataFrame([inputs], columns=["Client Name", "Email", "Phone Number"])], ignore_index=True)
-                with pd.ExcelWriter(EXCEL_PATH, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-                    df.to_excel(writer, sheet_name=TAB_NAME, index=False)
-                st.success("Client List added.")
+                new_row = pd.DataFrame([inputs], columns=["Client Name", "Email", "Phone Number"])
+                df = pd.concat([df, new_row], ignore_index=True)
+                worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+                st.success("Client added.")
+                st.experimental_rerun()
 
+    # --- Display Table with AgGrid ---
     st.markdown("### 📋 Table")
 
     gb = GridOptionsBuilder.from_dataframe(df)
@@ -43,9 +52,11 @@ def render_client_list():
     )
 
     updated_df = grid_response["data"]
+
+    # --- Save if Grid Was Edited ---
     if not updated_df.equals(df):
         st.success("Changes detected. Saving...")
         time.sleep(0.5)
-        with pd.ExcelWriter(EXCEL_PATH, engine="openpyxl", mode="a", if_sheet_exists="replace") as writer:
-            updated_df.to_excel(writer, sheet_name=TAB_NAME, index=False)
+        worksheet.update([updated_df.columns.values.tolist()] + updated_df.values.tolist())
         st.experimental_rerun()
+
