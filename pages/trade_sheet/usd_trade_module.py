@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import time
@@ -6,6 +5,7 @@ from datetime import date
 import plotly.express as px
 import io
 import xlsxwriter
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from utils.auth import get_gspread_client
 
 def render_usd_trade():
@@ -76,6 +76,26 @@ def render_usd_trade():
         st.success("✅ Trade submitted successfully!")
         st.rerun()
 
+    # --- Editable Table with Pagination ---
+    st.markdown("### 📋 Trade Table")
+    if not df.empty:
+        gb = GridOptionsBuilder.from_dataframe(df)
+        gb.configure_pagination()
+        gb.configure_default_column(editable=True, filter=True, resizable=True)
+        grid_response = AgGrid(
+            df,
+            gridOptions=gb.build(),
+            update_mode=GridUpdateMode.VALUE_CHANGED,
+            fit_columns_on_grid_load=True,
+            height=400
+        )
+        updated_df = grid_response["data"]
+        if not updated_df.equals(df):
+            st.info("⚠️ Edits are not saved back to Google Sheet. Please export manually if needed.")
+    else:
+        st.info("ℹ️ No trade data available to display.")
+
+    # --- Summary & Chart ---
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
