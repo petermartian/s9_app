@@ -1,5 +1,5 @@
 import streamlit as st
-from bank_statement.bank_statements_tab import render_bank_statements
+from bank_statements_tab import render_bank_statement
 
 
 st.set_page_config(page_title="Bank Statements", layout="wide")
