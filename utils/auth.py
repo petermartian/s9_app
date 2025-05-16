@@ -21,7 +21,6 @@ CREDENTIALS = {
     "main": {"admin": "mainpass"},
     "trade_sheet": {"trader": "traderpass"},
     "daily_transaction": {"dailyuser": "dailypass"},
-    "bank_statements": {"bankuser": "bankerpass1"},
     "database": {"dbadmin": "dbpass1"},
     "finance": {"financeuser": "financepass"},  # Finance credentials
     "hr": {"hruser": "hrpass"}  # HR credentials
