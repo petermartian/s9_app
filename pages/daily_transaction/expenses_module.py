@@ -10,7 +10,6 @@ def render_expenses():
     BANK_SHEET_KEY = "1RJPEK_ye59vA8ngWiTUYkJZ-xOc815TyKsQ3-f6u4kk"
     BANK_TAB = "List of A/C"
 
-    # Load Expenses Sheet
     @st.cache_data(ttl=60)
     def load_expenses():
         client = get_gspread_client()
@@ -19,7 +18,6 @@ def render_expenses():
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
 
-    # Load Bank Details for Dropdown
     @st.cache_data(ttl=60)
     def load_bank_details():
         client = get_gspread_client()
@@ -43,7 +41,7 @@ def render_expenses():
         with col2:
             amount_ngn = st.number_input("Amount NGN", min_value=0.0)
             amount_usd = st.number_input("Amount USD", min_value=0.0)
-            bank = st.selectbox("Bank", bank_options)
+            bank = st.selectbox("Bank", options=bank_options)
         submitted = st.form_submit_button("✅ Submit Expense")
 
     if submitted:
