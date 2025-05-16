@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 from datetime import date
@@ -6,19 +5,33 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 from utils.auth import get_gspread_client
 
 def render_expenses():
-    SHEET_KEY = "1PqngUtZTmt0c_CV8uq--3HHMx40SvBE3yB-FICcLpiA"
-    TAB_NAME = "expenses"
+    EXPENSE_SHEET_KEY = "1PqngUtZTmt0c_CV8uq--3HHMx40SvBE3yB-FICcLpiA"
+    EXPENSE_TAB = "expenses"
+    BANK_SHEET_KEY = "1RJPEK_ye59vA8ngWiTUYkJZ-xOc815TyKsQ3-f6u4kk"
+    BANK_TAB = "List of A/C"
 
+    # Load Expenses Sheet
     @st.cache_data(ttl=60)
     def load_expenses():
         client = get_gspread_client()
-        sheet = client.open_by_key(SHEET_KEY)
-        ws = sheet.worksheet(TAB_NAME)
+        sheet = client.open_by_key(EXPENSE_SHEET_KEY)
+        ws = sheet.worksheet(EXPENSE_TAB)
         df = pd.DataFrame(ws.get_all_records())
         return df, ws
 
+    # Load Bank Details for Dropdown
+    @st.cache_data(ttl=60)
+    def load_bank_details():
+        client = get_gspread_client()
+        sheet = client.open_by_key(BANK_SHEET_KEY)
+        df = pd.DataFrame(sheet.worksheet(BANK_TAB).get_all_records())
+        if "Bank Details" in df.columns:
+            return df["Bank Details"].dropna().unique().tolist()
+        return []
+
     df, worksheet = load_expenses()
     df.columns = [str(col).strip().title() for col in df.columns]
+    bank_options = load_bank_details()
 
     st.subheader("💸 Expenses Entry")
 
@@ -30,7 +43,7 @@ def render_expenses():
         with col2:
             amount_ngn = st.number_input("Amount NGN", min_value=0.0)
             amount_usd = st.number_input("Amount USD", min_value=0.0)
-            bank = st.text_input("Bank")
+            bank = st.selectbox("Bank", bank_options)
         submitted = st.form_submit_button("✅ Submit Expense")
 
     if submitted:
