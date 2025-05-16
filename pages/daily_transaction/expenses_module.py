@@ -18,7 +18,7 @@ def render_expenses():
         return df, ws
 
     df, worksheet = load_expenses()
-    df.columns = df.columns.str.strip().str.title()
+    df.columns = [str(col).strip().title() for col in df.columns]
 
     st.subheader("💸 Expenses Entry")
 
