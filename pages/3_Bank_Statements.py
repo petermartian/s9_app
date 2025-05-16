@@ -1,6 +1,5 @@
 import streamlit as st
-from bank_statements_tab import render_bank_statement
-
+from bank_statements_tab import render_bank_statements
 
 st.set_page_config(page_title="Bank Statements", layout="wide")
 st.title("🏦 Bank Statement Module")
