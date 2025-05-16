@@ -18,7 +18,7 @@ def render_at_a_glance():
         return df, ws
 
     df, worksheet = load_data()
-    df.columns = df.columns.str.strip().str.title()
+    df.columns = [str(col).strip().title() for col in df.columns]  # safer handling
 
     st.subheader("📌 At a Glance Summary")
 
