@@ -1,17 +1,14 @@
+
 import streamlit as st
-from utils.auth import check_access, logout  # Import logout
+from pages.bank_statement.bank_statements_tab import render_bank_statements
 
-# --- AUTH ---
-if not check_access("bank_statement"):
-    st.stop()
-
-# --- PAGE CONTENT ---
 st.set_page_config(page_title="Bank Statements", layout="wide")
-st.title("🏦 Bank Statement Upload")
+st.title("🏦 Bank Statement Module")
 
-# --- LOGOUT BUTTON ---
-logout("bank_statement")  # Add logout button
+tab1, tab2 = st.tabs(["📄 Bank Statements", "💰 Bank Balance"])
 
-# Placeholder for upload logic
-st.markdown("Upload and manage your bank statements here.")
-# Bank statement upload and reconciliation
+with tab1:
+    render_bank_statements()
+
+with tab2:
+    st.info("💡 Bank Balance tab coming soon...")
