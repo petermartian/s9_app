@@ -11,7 +11,7 @@ def render_usdngn():
     DATABASE_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     SELLER_TAB = "Seller List"
     CLIENT_TAB = "Client List"
-    TXN_TYPE_TAB = "Transaction Type"
+    TXN_TYPE_TAB = "Transaction type"
 
     # Helper to get dropdown lists from DB sheet
     @st.cache_data(ttl=3600)
