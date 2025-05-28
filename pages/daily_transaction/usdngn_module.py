@@ -11,9 +11,8 @@ def render_usdngn():
     DATABASE_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     SELLER_TAB = "Seller List"
     CLIENT_TAB = "Client List"
-    TXN_TYPE_TAB = "Transaction type"  
+    TXN_TYPE_TAB = "Transaction type"
 
-    # --- Helper to get dropdown lists from DB sheet ---
     @st.cache_data(ttl=3600)
     def get_dropdown_list(tab):
         client = get_gspread_client()
@@ -22,7 +21,7 @@ def render_usdngn():
             ws = sheet.worksheet(tab)
             df = pd.DataFrame(ws.get_all_values())
             if not df.empty:
-                return df.iloc[1:, 0].dropna().tolist()  # Skip header row
+                return df.iloc[1:, 0].dropna().tolist()
             return []
         except Exception as e:
             st.warning(f"Tab '{tab}' not found in the database sheet. Please check spelling/casing.")
@@ -45,7 +44,6 @@ def render_usdngn():
 
     st.subheader("💱 USD/NGN Tracker")
 
-    # --- Input Form ---
     with st.form("usdngn_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
@@ -91,7 +89,6 @@ def render_usdngn():
 
         submitted = st.form_submit_button("✅ Submit Transaction")
 
-    # --- Helper: Sanitize before append ---
     def sanitize(val):
         try:
             import numpy as np
@@ -157,37 +154,33 @@ def render_usdngn():
     else:
         st.info("ℹ️ No data available in USD/NGN sheet.")
 
+    # ---- SUMMARY TABLES SECTION ----
+    st.markdown("## 📊 Profit & Value Summaries (Sales Only)")
+    if not df.empty:
+        df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+        df = df[df["Date"].notna()]
 
-# ---- SUMMARY TABLES SECTION ----
+        # Only sales
+        sales_df = df[df["Transaction Type"].str.lower() == "sales"].copy()
 
-if not df.empty:
-    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
-    df = df[df["Date"].notna()]
+        # Force columns to numeric for aggregation
+        for col in ["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]:
+            sales_df[col] = pd.to_numeric(sales_df[col], errors="coerce").fillna(0)
 
-    sales_df = df[df["Transaction Type"].str.lower() == "sales"]
+        # Daily
+        daily_summary = sales_df.groupby("Date")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+        st.markdown("### 📈 Daily Summary")
+        st.dataframe(daily_summary, hide_index=True)
 
-    for col in ["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]:
-        sales_df[col] = pd.to_numeric(sales_df[col], errors="coerce").fillna(0)
+        # Weekly
+        sales_df["Year"] = sales_df["Date"].dt.year
+        sales_df["Week"] = sales_df["Date"].dt.isocalendar().week
+        weekly_summary = sales_df.groupby(["Year", "Week"])[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+        st.markdown("### 📈 Weekly Summary")
+        st.dataframe(weekly_summary, hide_index=True)
 
-    # DAILY
-    daily_summary = sales_df.groupby("Date")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-
-    # WEEKLY
-    sales_df["Year"] = sales_df["Date"].dt.year
-    sales_df["Week"] = sales_df["Date"].dt.isocalendar().week
-    weekly_summary = sales_df.groupby(["Year", "Week"])[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-
-    # MONTHLY
-    sales_df["Month"] = sales_df["Date"].dt.strftime('%Y-%m')
-    monthly_summary = sales_df.groupby("Month")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-
-    st.markdown("### 📈 Daily Summary (Sales Only)")
-    st.dataframe(daily_summary, hide_index=True)
-
-    st.markdown("### 📈 Weekly Summary (Sales Only)")
-    st.dataframe(weekly_summary, hide_index=True)
-
-    st.markdown("### 📈 Monthly Summary (Sales Only)")
-    st.dataframe(monthly_summary, hide_index=True)
-
-
+        # Monthly
+        sales_df["MonthStr"] = sales_df["Date"].dt.strftime('%Y-%m')
+        monthly_summary = sales_df.groupby("MonthStr")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+        st.markdown("### 📈 Monthly Summary")
+        st.dataframe(monthly_summary, hide_index=True)
