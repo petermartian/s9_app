@@ -156,13 +156,14 @@ def render_usdngn():
     # ---- SUMMARY TABLES SECTION WITH DATE FILTER ----
     st.markdown("## 📅 Filter Summaries by Date Range")
 
-    if not df.empty:
+    # Always show the filter if df has a Date column and is not empty
+    if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
 
         min_date = df["Date"].min().date()
         max_date = df["Date"].max().date()
-        default_start = max_date.replace(day=1)  # start of latest month
+        default_start = max_date.replace(day=1)
         start_date, end_date = st.date_input(
             "Select date range:",
             value=(default_start, max_date),
@@ -170,14 +171,16 @@ def render_usdngn():
             max_value=max_date
         )
 
-        # Filter DataFrame
         mask = (df["Date"].dt.date >= start_date) & (df["Date"].dt.date <= end_date)
         filtered_df = df.loc[mask].copy()
+    else:
+        st.info("No data to filter.")
+        filtered_df = pd.DataFrame()
 
+    if not filtered_df.empty:
         # Only sales
         sales_df = filtered_df[filtered_df["Transaction Type"].str.lower() == "sales"].copy()
 
-        # Force columns to numeric for aggregation
         for col in ["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]:
             sales_df[col] = pd.to_numeric(sales_df[col], errors="coerce").fillna(0)
 
@@ -202,4 +205,5 @@ def render_usdngn():
         else:
             st.info("No sales data found in the selected date range.")
     else:
-        st.info("No data available in USD/NGN sheet.")
+        st.info("No data found in the selected date range.")
+
