@@ -153,20 +153,31 @@ def render_usdngn():
     else:
         st.info("ℹ️ No data available in USD/NGN sheet.")
 
-    # ---- SUMMARY TABLES SECTION WITH DATE FILTER ----
+    # ---- SUMMARY TABLES SECTION WITH ROBUST DATE FILTER ----
     st.markdown("## 📅 Filter Summaries by Date Range")
 
-    # Always show the filter if df has a Date column and is not empty
     if not df.empty and "Date" in df.columns:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
 
         min_date = df["Date"].min().date()
         max_date = df["Date"].max().date()
-        default_start = max_date.replace(day=1)
+
+        # Handle case where min_date == max_date (one record only)
+        if min_date == max_date:
+            default_range = (min_date, max_date)
+        else:
+            try:
+                default_start = max_date.replace(day=1)
+                if default_start < min_date:
+                    default_start = min_date
+                default_range = (default_start, max_date)
+            except Exception:
+                default_range = (min_date, max_date)
+
         start_date, end_date = st.date_input(
             "Select date range:",
-            value=(default_start, max_date),
+            value=default_range,
             min_value=min_date,
             max_value=max_date
         )
@@ -206,4 +217,3 @@ def render_usdngn():
             st.info("No sales data found in the selected date range.")
     else:
         st.info("No data found in the selected date range.")
-
