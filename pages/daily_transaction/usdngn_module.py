@@ -11,9 +11,9 @@ def render_usdngn():
     DATABASE_KEY = "1j_D2QiaS3IEJuNI27OA56l8nWWatzxidLKuqV4Dfet4"
     SELLER_TAB = "Seller List"
     CLIENT_TAB = "Client List"
-    TXN_TYPE_TAB = "Transaction type"   
+    TXN_TYPE_TAB = "Transaction type"   # Must match tab name exactly!
 
-    # Helper to get dropdown lists from DB sheet
+    # --- Helper to get dropdown lists from DB sheet ---
     @st.cache_data(ttl=3600)
     def get_dropdown_list(tab):
         client = get_gspread_client()
@@ -41,11 +41,11 @@ def render_usdngn():
         return df, ws
 
     df, worksheet = load_data()
-    # Set the correct headers capitalization (first row is header, .title() for neatness)
     df.columns = [str(col).strip() for col in df.columns]
 
     st.subheader("💱 USD/NGN Tracker")
 
+    # --- Input Form ---
     with st.form("usdngn_form", clear_on_submit=False):
         col1, col2 = st.columns(2)
         with col1:
@@ -62,20 +62,19 @@ def render_usdngn():
             total_fcy_paid_to_client = st.number_input("Total Fcy Paid To Client", min_value=0.0, format="%.2f")
             lcy_payments = st.number_input("Lcy Payments", min_value=0.0, format="%.2f")
         
-        # ==== COMPUTED FIELDS ====
+        # --- Computed Fields ---
         lcy_value = fcy_total_value * sell_rate
         fcy_outstanding = round(fcy_total_value - total_fcy_paid_to_client, 0)
         lcy_outstanding = round(max(lcy_value - lcy_payments, 0), 0)
         spread = (lcy_payments / fcy_total_value - sell_rate) if fcy_total_value != 0 else 0
         commission = spread * fcy_total_value
+        profit_ngn = (sell_rate - buy_rate) * fcy_total_value
 
-        profit_ngn = (sell_rate - buy_rate) * fcy_total_value  # Adjust if your profit logic is different
-
-        our_obli_status = "OUTSTANDING" if (txn_type.lower() == "sales" and fcy_outstanding > 0) or lcy_outstanding > 0 else "COMPLETED"
+        our_obli_status = "OUTSTANDING" if (txn_type and txn_type.lower() == "sales" and fcy_outstanding > 0) or lcy_outstanding > 0 else "COMPLETED"
         customer_obli_status = "OUTSTANDING" if lcy_outstanding > 0 else "COMPLETED"
         status = "EXCESS PAYMENT PLEASE REVIEW" if fcy_outstanding < 0 else ""
 
-        # ==== LIVE PREVIEW ====
+        # --- Live Preview ---
         st.markdown("#### 🧮 Computed Fields Preview")
         preview_dict = {
             "profit (ngn)": profit_ngn,
@@ -91,6 +90,18 @@ def render_usdngn():
         st.json(preview_dict)
 
         submitted = st.form_submit_button("✅ Submit Transaction")
+
+    # --- Helper: Sanitize before append ---
+    def sanitize(val):
+        try:
+            import numpy as np
+            if isinstance(val, (np.generic,)):
+                return float(val)
+        except ImportError:
+            pass
+        if isinstance(val, (float, int)):
+            return float(val)
+        return str(val)
 
     if submitted:
         new_row = {
@@ -115,11 +126,11 @@ def render_usdngn():
             "Customer Obli Status": customer_obli_status,
             "Status": status,
         }
-        worksheet.append_row(list(new_row.values()))
+        worksheet.append_row([sanitize(v) for v in new_row.values()])
         st.success("✅ USD/NGN transaction added successfully!")
         st.rerun()
 
-    # ---- Display Table ----
+    # --- Display Table ---
     st.markdown("### 📋 USD/NGN Transactions Table")
     col_refresh, _ = st.columns([1, 9])
     with col_refresh:
@@ -145,3 +156,4 @@ def render_usdngn():
             st.success("✅ Table updates saved!")
     else:
         st.info("ℹ️ No data available in USD/NGN sheet.")
+
