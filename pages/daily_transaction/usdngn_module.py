@@ -72,7 +72,6 @@ def render_usdngn():
         customer_obli_status = "OUTSTANDING" if lcy_outstanding > 0 else "COMPLETED"
         status = "EXCESS PAYMENT PLEASE REVIEW" if fcy_outstanding < 0 else ""
 
-        # --- Live Preview ---
         st.markdown("#### 🧮 Computed Fields Preview")
         preview_dict = {
             "profit (ngn)": profit_ngn,
@@ -154,33 +153,53 @@ def render_usdngn():
     else:
         st.info("ℹ️ No data available in USD/NGN sheet.")
 
-    # ---- SUMMARY TABLES SECTION ----
-    st.markdown("## 📊 Profit & Value Summaries (Sales Only)")
+    # ---- SUMMARY TABLES SECTION WITH DATE FILTER ----
+    st.markdown("## 📅 Filter Summaries by Date Range")
+
     if not df.empty:
         df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
         df = df[df["Date"].notna()]
 
+        min_date = df["Date"].min().date()
+        max_date = df["Date"].max().date()
+        default_start = max_date.replace(day=1)  # start of latest month
+        start_date, end_date = st.date_input(
+            "Select date range:",
+            value=(default_start, max_date),
+            min_value=min_date,
+            max_value=max_date
+        )
+
+        # Filter DataFrame
+        mask = (df["Date"].dt.date >= start_date) & (df["Date"].dt.date <= end_date)
+        filtered_df = df.loc[mask].copy()
+
         # Only sales
-        sales_df = df[df["Transaction Type"].str.lower() == "sales"].copy()
+        sales_df = filtered_df[filtered_df["Transaction Type"].str.lower() == "sales"].copy()
 
         # Force columns to numeric for aggregation
         for col in ["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]:
             sales_df[col] = pd.to_numeric(sales_df[col], errors="coerce").fillna(0)
 
-        # Daily
-        daily_summary = sales_df.groupby("Date")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-        st.markdown("### 📈 Daily Summary")
-        st.dataframe(daily_summary, hide_index=True)
+        if not sales_df.empty:
+            # Daily
+            daily_summary = sales_df.groupby("Date")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+            st.markdown("### 📈 Daily Summary (Sales Only)")
+            st.dataframe(daily_summary, hide_index=True)
 
-        # Weekly
-        sales_df["Year"] = sales_df["Date"].dt.year
-        sales_df["Week"] = sales_df["Date"].dt.isocalendar().week
-        weekly_summary = sales_df.groupby(["Year", "Week"])[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-        st.markdown("### 📈 Weekly Summary")
-        st.dataframe(weekly_summary, hide_index=True)
+            # Weekly
+            sales_df["Year"] = sales_df["Date"].dt.year
+            sales_df["Week"] = sales_df["Date"].dt.isocalendar().week
+            weekly_summary = sales_df.groupby(["Year", "Week"])[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+            st.markdown("### 📈 Weekly Summary (Sales Only)")
+            st.dataframe(weekly_summary, hide_index=True)
 
-        # Monthly
-        sales_df["MonthStr"] = sales_df["Date"].dt.strftime('%Y-%m')
-        monthly_summary = sales_df.groupby("MonthStr")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
-        st.markdown("### 📈 Monthly Summary")
-        st.dataframe(monthly_summary, hide_index=True)
+            # Monthly
+            sales_df["MonthStr"] = sales_df["Date"].dt.strftime('%Y-%m')
+            monthly_summary = sales_df.groupby("MonthStr")[["Profit (Ngn)", "Lcy Value", "Fcy Total Value"]].sum().reset_index()
+            st.markdown("### 📈 Monthly Summary (Sales Only)")
+            st.dataframe(monthly_summary, hide_index=True)
+        else:
+            st.info("No sales data found in the selected date range.")
+    else:
+        st.info("No data available in USD/NGN sheet.")
