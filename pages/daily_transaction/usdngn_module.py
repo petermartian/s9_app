@@ -153,7 +153,7 @@ def render_usdngn():
     else:
         st.info("ℹ️ No data available in USD/NGN sheet.")
 
-    # ---- SUMMARY TABLES SECTION WITH ROBUST DATE FILTER ----
+    # ---- SUMMARY TABLES SECTION WITH ROBUST DATE RANGE PICKER ----
     st.markdown("## 📅 Filter Summaries by Date Range")
 
     if not df.empty and "Date" in df.columns:
@@ -163,27 +163,31 @@ def render_usdngn():
         min_date = df["Date"].min().date()
         max_date = df["Date"].max().date()
 
-        # Build default_range as a tuple of two Python date objects
         if min_date == max_date:
-            default_range = (min_date, max_date)
+            # Only one date available, so create a tuple with the same date twice
+            default_range = [min_date, max_date]
+            start_date, end_date = min_date, max_date
+            st.info(f"Only one date available: {min_date}. Showing results for this date.")
         else:
             try:
                 default_start = max_date.replace(day=1)
                 if default_start < min_date:
                     default_start = min_date
-                default_range = (default_start, max_date)
+                default_range = [default_start, max_date]
             except Exception:
-                default_range = (min_date, max_date)
-        # Ensure both elements are datetime.date
-        default_range = tuple([pd.to_datetime(d).date() if not isinstance(d, date) else d for d in default_range])
+                default_range = [min_date, max_date]
 
-        # Show date_input and always provide two date objects
-        start_date, end_date = st.date_input(
-            "Select date range:",
-            value=default_range,
-            min_value=min_date,
-            max_value=max_date
-        )
+            selected_range = st.date_input(
+                "Select date range:",
+                value=default_range,
+                min_value=min_date,
+                max_value=max_date
+            )
+            # Unpack date range robustly
+            if isinstance(selected_range, (list, tuple)) and len(selected_range) == 2:
+                start_date, end_date = selected_range
+            else:
+                start_date = end_date = selected_range if isinstance(selected_range, date) else min_date
 
         mask = (df["Date"].dt.date >= start_date) & (df["Date"].dt.date <= end_date)
         filtered_df = df.loc[mask].copy()
