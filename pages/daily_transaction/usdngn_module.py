@@ -163,7 +163,7 @@ def render_usdngn():
         min_date = df["Date"].min().date()
         max_date = df["Date"].max().date()
 
-        # Handle case where min_date == max_date (one record only)
+        # Build default_range as a tuple of two Python date objects
         if min_date == max_date:
             default_range = (min_date, max_date)
         else:
@@ -174,7 +174,10 @@ def render_usdngn():
                 default_range = (default_start, max_date)
             except Exception:
                 default_range = (min_date, max_date)
+        # Ensure both elements are datetime.date
+        default_range = tuple([pd.to_datetime(d).date() if not isinstance(d, date) else d for d in default_range])
 
+        # Show date_input and always provide two date objects
         start_date, end_date = st.date_input(
             "Select date range:",
             value=default_range,
